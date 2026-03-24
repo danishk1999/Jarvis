@@ -1,0 +1,17 @@
+# Secret keys - NEVER commit this
+.env
+
+# Python virtual environment
+venv/
+
+# Jarvis memory files
+memory_store/
+seen_jobs.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code settings
+.vscode/
