@@ -6,12 +6,18 @@ Inspired by Jarvis from Iron Man — runs 24/7, remembers everything, and works 
 ## Features
 
 - Natural conversation powered by Claude AI (Anthropic)
+- **Agentic tool use** — Jarvis takes real actions, not just answers
 - Persistent memory — remembers you across every conversation
+- **Notes** — save and retrieve notes by tag
+- **To-do list** — add, complete, and manage tasks
+- **Reminders** — set a timer and get a Telegram notification when it fires
+- **Weather** — live weather for any city (no API key required)
+- **Web search** — DuckDuckGo search from chat
+- **Morning briefing** — weather + tasks + new jobs in one message
 - Daily job search briefings at 7 AM automatically
 - Searches Calgary, Edmonton and Remote jobs
 - Telegram interface — works on phone and desktop
 - Smart deduplication — never shows the same job twice
-- On-demand job search with /jobs command
 
 ## Tech Stack
 
@@ -71,9 +77,21 @@ Find your bot and send /start
 | Command | Description |
 |---------|-------------|
 | /start | Introduction and command list |
+| /briefing | Morning briefing — weather + tasks + jobs |
+| /weather [city] | Live weather (default: Calgary) |
+| /todos | List pending tasks |
+| /notes | List saved notes |
+| /search \<query\> | Web search |
 | /jobs | Search IT jobs instantly |
 | /profile | See what Jarvis knows about you |
 | /clear | Clear conversation history |
+
+Or just **chat naturally** — Jarvis will call the right tools on its own:
+- "Remind me in 30 minutes to drink water"
+- "Add 'study for CCNA' to my to-do list"
+- "Note that my gym membership renews on May 15"
+- "What's the weather in Edmonton?"
+- "Search for news about AI"
 
 ## Memory System
 
@@ -102,7 +120,10 @@ Only new jobs are shown — Jarvis remembers which jobs it has already sent you.
 - [x] Core AI agent with memory
 - [x] Telegram interface — phone and desktop
 - [x] Automated daily job search
+- [x] Notes, to-dos, reminders, weather, web search
+- [x] Agentic tool-use loop (Claude calls tools autonomously)
 - [ ] Voice interface — wake word and speech
+- [ ] Gmail / Google Calendar integration
 - [ ] Certification expiry tracker
 - [ ] Web UI dashboard
 - [ ] DIY AI glasses hardware build

@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>J.A.R.V.I.S.</title>
+<style>
+/* ── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --c:   #00d4ff;
+  --c2:  #0055cc;
+  --bg:  #020912;
+  --sf:  rgba(0, 18, 45, 0.75);
+  --bd:  rgba(0, 212, 255, 0.22);
+  --txt: #8ab8d8;
+  --hi:  #d0ecff;
+  --glo: 0 0 8px rgba(0,212,255,0.55);
+  --glo2:0 0 20px rgba(0,212,255,0.35), 0 0 40px rgba(0,212,255,0.15);
+  --f:   'Courier New', Courier, monospace;
+}
+
+html, body {
+  height: 100%; background: var(--bg);
+  color: var(--txt); font-family: var(--f);
+  overflow: hidden; user-select: none;
+}
+
+/* subtle grid */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg,  transparent, transparent 59px, rgba(0,212,255,0.035) 60px),
+    repeating-linear-gradient(90deg, transparent, transparent 59px, rgba(0,212,255,0.035) 60px);
+}
+/* center radial glow */
+body::after {
+  content: ''; position: fixed; pointer-events: none;
+  top:50%; left:50%; transform:translate(-50%,-50%);
+  width:700px; height:700px;
+  background: radial-gradient(circle, rgba(0,35,90,0.35) 0%, transparent 65%);
+}
+
+/* ── Corner brackets ───────────────────────────────────── */
+.corner { position:fixed; width:36px; height:36px; pointer-events:none; z-index:50; }
+.corner.tl { top:0; left:0;  border-top:2px solid var(--c); border-left:2px solid var(--c); }
+.corner.tr { top:0; right:0; border-top:2px solid var(--c); border-right:2px solid var(--c); }
+.corner.bl { bottom:0; left:0;  border-bottom:2px solid var(--c); border-left:2px solid var(--c); }
+.corner.br { bottom:0; right:0; border-bottom:2px solid var(--c); border-right:2px solid var(--c); }
+
+/* ── Boot overlay ──────────────────────────────────────── */
+#boot {
+  position: fixed; inset: 0; z-index: 100;
+  background: #000; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:24px;
+  transition: opacity 0.8s ease;
+}
+#boot-logo {
+  font-size: 36px; font-weight:bold; letter-spacing:10px;
+  color: var(--c); text-shadow: var(--glo2);
+  animation: flicker 0.1s linear;
+}
+#boot-log {
+  font-size:11px; letter-spacing:2px; color:rgba(0,212,255,0.7);
+  line-height:2; text-align:left; width:360px; max-height:180px;
+  overflow:hidden;
+}
+#boot-bar-wrap {
+  width:360px; height:2px; background:rgba(0,212,255,0.15);
+  overflow:hidden; border-radius:1px;
+}
+#boot-bar {
+  height:100%; width:0; background:var(--c);
+  box-shadow:var(--glo); transition:width 0.2s linear;
+}
+@keyframes flicker { 0%,100%{opacity:1} 50%{opacity:0.85} }
+
+/* ── Main app ──────────────────────────────────────────── */
+#app {
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; height:100vh;
+  opacity:0; transition:opacity 0.8s ease;
+}
+#app.visible { opacity:1; }
+
+/* ── Header ────────────────────────────────────────────── */
+#hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 24px; flex-shrink:0;
+  border-bottom:1px solid var(--bd);
+  background:rgba(0,8,22,0.85); backdrop-filter:blur(10px);
+}
+.hdr-left  { display:flex; flex-direction:column; gap:2px; }
+.hdr-title { font-size:18px; font-weight:bold; letter-spacing:5px; color:var(--c); text-shadow:var(--glo); }
+.hdr-sub   { font-size:9px;  letter-spacing:3px; color:rgba(0,212,255,0.45); }
+.hdr-status{ display:flex; align-items:center; gap:8px; font-size:11px; letter-spacing:2px; color:var(--c); }
+#sdot { width:8px; height:8px; border-radius:50%; background:var(--c); box-shadow:var(--glo); animation:pdot 2s ease-in-out infinite; }
+@keyframes pdot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Main grid ─────────────────────────────────────────── */
+#main {
+  flex:1; display:grid;
+  grid-template-columns:270px 1fr 230px;
+  gap:12px; padding:12px; overflow:hidden; min-height:0;
+}
+
+/* ── Panels ────────────────────────────────────────────── */
+.panel {
+  background:var(--sf); border:1px solid var(--bd); border-radius:3px;
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:inset 0 0 30px rgba(0,212,255,0.02);
+}
+.ptitle {
+  font-size:9px; letter-spacing:3px; color:var(--c);
+  padding:7px 12px; border-bottom:1px solid var(--bd);
+  background:rgba(0,212,255,0.04); flex-shrink:0;
+}
+
+/* ── Transcript ────────────────────────────────────────── */
+#log {
+  flex:1; overflow-y:auto; padding:10px 12px;
+  display:flex; flex-direction:column; gap:8px; font-size:11.5px; line-height:1.55;
+}
+#log::-webkit-scrollbar { width:3px; }
+#log::-webkit-scrollbar-track { background:transparent; }
+#log::-webkit-scrollbar-thumb { background:var(--bd); border-radius:2px; }
+
+.msg { animation:fin 0.3s ease; }
+@keyframes fin { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+.mlabel { font-size:9px; letter-spacing:1px; margin-bottom:2px; }
+.msg.j .mlabel  { color:var(--c); }
+.msg.u .mlabel  { color:#b088ff; }
+.msg.sy .mlabel { color:#ffaa22; }
+.msg.j .mtext   { color:var(--hi); }
+.msg.u .mtext   { color:#d8c8ff; }
+.msg.sy .mtext  { color:#ffd066; }
+
+#interim {
+  padding:4px 12px 6px; font-size:10px; font-style:italic;
+  color:rgba(176,136,255,0.55); min-height:18px; flex-shrink:0;
+  border-top:1px solid rgba(0,212,255,0.06);
+}
+
+/* ── Center HUD ────────────────────────────────────────── */
+#cpanel {
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; box-shadow:none;
+}
+#hud { max-width:100%; max-height:100%; }
+
+/* ── Right panel ───────────────────────────────────────── */
+#sysList { flex:1; overflow-y:auto; padding:8px 12px; }
+.sitem {
+  display:flex; align-items:center; gap:8px; padding:5px 0;
+  font-size:10px; border-bottom:1px solid rgba(0,212,255,0.06);
+}
+.sdot2 { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+.sdot2.on  { background:var(--c); box-shadow:var(--glo); }
+.sdot2.off { background:#224; }
+.sdot2.warn{ background:#ffaa00; box-shadow:0 0 6px #ffaa00; }
+
+#actlog {
+  padding:8px 12px; font-size:9px; line-height:1.9;
+  color:rgba(0,212,255,0.45); border-top:1px solid var(--bd);
+  max-height:110px; overflow-y:auto; flex-shrink:0;
+}
+#actlog::-webkit-scrollbar { width:2px; }
+#actlog::-webkit-scrollbar-thumb { background:var(--bd); }
+
+/* ── Controls ──────────────────────────────────────────── */
+#ctrl {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 16px; flex-shrink:0;
+  border-top:1px solid var(--bd); background:rgba(0,8,22,0.85);
+}
+#spkbtn {
+  background:transparent; border:1.5px solid var(--c); color:var(--c);
+  font-family:var(--f); font-size:10px; letter-spacing:2px;
+  padding:9px 18px; cursor:pointer; border-radius:2px;
+  transition:all 0.2s; white-space:nowrap;
+  text-shadow:var(--glo); box-shadow:var(--glo);
+}
+#spkbtn:hover { background:rgba(0,212,255,0.1); box-shadow:var(--glo2); }
+#spkbtn.listening {
+  border-color:#ff5555; color:#ff7777; background:rgba(255,60,60,0.12);
+  text-shadow:0 0 8px rgba(255,80,80,0.6);
+  box-shadow:0 0 10px rgba(255,60,60,0.4);
+  animation:pbtn 0.9s ease-in-out infinite;
+}
+@keyframes pbtn { 0%,100%{transform:scale(1)} 50%{transform:scale(1.02)} }
+
+#wavecanvas { flex:1; height:46px; }
+
+#txtwrap { display:flex; gap:7px; }
+#txtin {
+  background:rgba(0,15,40,0.85); border:1px solid var(--bd);
+  color:var(--hi); font-family:var(--f); font-size:11px;
+  padding:8px 11px; border-radius:2px; width:220px; outline:none;
+  transition:border-color 0.2s;
+}
+#txtin:focus { border-color:var(--c); box-shadow:var(--glo); }
+#txtin::placeholder { color:rgba(0,212,255,0.28); }
+#sndbtn {
+  background:transparent; border:1px solid var(--bd); color:var(--c);
+  font-family:var(--f); font-size:13px; padding:8px 12px;
+  cursor:pointer; border-radius:2px; transition:all 0.2s;
+}
+#sndbtn:hover { background:rgba(0,212,255,0.1); border-color:var(--c); }
+</style>
+</head>
+<body>
+
+<!-- Corner brackets -->
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<!-- Boot overlay -->
+<div id="boot">
+  <div id="boot-logo">J.A.R.V.I.S.</div>
+  <div id="boot-log"></div>
+  <div id="boot-bar-wrap"><div id="boot-bar"></div></div>
+</div>
+
+<!-- Main app -->
+<div id="app">
+  <header id="hdr">
+    <div class="hdr-left">
+      <div class="hdr-title">◈ J.A.R.V.I.S.</div>
+      <div class="hdr-sub">JUST A RATHER VERY INTELLIGENT SYSTEM · MARK VII</div>
+    </div>
+    <div class="hdr-status">
+      <div id="sdot"></div>
+      <span id="stxt">INITIALIZING</span>
+    </div>
+  </header>
+
+  <div id="main">
+    <!-- Left: transcript -->
+    <div class="panel">
+      <div class="ptitle">◈ CONVERSATION LOG</div>
+      <div id="log"></div>
+      <div id="interim"></div>
+    </div>
+
+    <!-- Center: HUD canvas -->
+    <div id="cpanel" class="panel" style="background:transparent;border:none;box-shadow:none;">
+      <canvas id="hud" width="430" height="430"></canvas>
+    </div>
+
+    <!-- Right: systems -->
+    <div class="panel">
+      <div class="ptitle">◈ SYSTEM STATUS</div>
+      <div id="sysList">
+        <div class="sitem"><div class="sdot2 on"></div>NEURAL ENGINE</div>
+        <div class="sitem"><div class="sdot2 on"></div>MEMORY MODULE</div>
+        <div class="sitem"><div class="sdot2 on"></div>TOOL SUITE</div>
+        <div class="sitem"><div class="sdot2 on"></div>VOICE SYNTHESIS</div>
+        <div class="sitem"><div class="sdot2 off" id="micdot"></div><span id="micstat">MICROPHONE —</span></div>
+        <div class="sitem"><div class="sdot2 on"></div>WEATHER API</div>
+        <div class="sitem"><div class="sdot2 on"></div>WEB SEARCH</div>
+        <div class="sitem"><div class="sdot2 on"></div>NOTES & TASKS</div>
+        <div class="sitem"><div class="sdot2 warn"></div>JOB SCANNER IDLE</div>
+      </div>
+      <div class="ptitle" style="margin-top:auto;">◈ ACTIVITY</div>
+      <div id="actlog"></div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div id="ctrl">
+    <button id="spkbtn" onclick="toggleSpeech()">◉ SPEAK</button>
+    <canvas id="wavecanvas"></canvas>
+    <div id="txtwrap">
+      <input id="txtin" type="text" placeholder="or type a command..."
+             onkeydown="if(event.key==='Enter')sendText()" />
+      <button id="sndbtn" onclick="sendText()">▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════
+let hudState = 'idle'; // idle | listening | processing | speaking
+let wvAnalyser = null, wvData = null;
+let micAnalyser = null, micData = null;
+let isListening = false;
+let recognition  = null;
+let playbackCtx  = null;
+
+// ═══════════════════════════════════════════════════════════════
+// Boot sequence
+// ═══════════════════════════════════════════════════════════════
+const bootLines = [
+  'POWER SYSTEMS ONLINE',
+  'LOADING NEURAL LANGUAGE ENGINE...',
+  'MEMORY MODULE: OPERATIONAL',
+  'TOOL SUITE: 12 MODULES LOADED',
+  'VOICE SYNTHESIS: en-GB-RyanNeural READY',
+  'SPEECH RECOGNITION: INITIALIZING...',
+  'WEATHER API: CONNECTED',
+  'WEB SEARCH: CONNECTED',
+  'WEBSOCKET: CONNECTING TO INTELLIGENCE CORE...',
+  '[ J.A.R.V.I.S. FULLY OPERATIONAL ]',
+];
+
+async function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function runBoot() {
+  const log = document.getElementById('boot-log');
+  const bar = document.getElementById('boot-bar');
+  for (let i = 0; i < bootLines.length; i++) {
+    await sleep(120 + Math.random() * 200);
+    const d = document.createElement('div');
+    d.textContent = '> ' + bootLines[i];
+    log.appendChild(d);
+    bar.style.width = ((i+1)/bootLines.length*100) + '%';
+  }
+  await sleep(700);
+  const overlay = document.getElementById('boot');
+  overlay.style.opacity = '0';
+  await sleep(800);
+  overlay.style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  initSpeech();
+  setTimeout(()=>{
+    addMsg('j', "Good day. I am J.A.R.V.I.S. — Just A Rather Very Intelligent System. All modules are online. How may I assist you?");
+  }, 600);
+}
+runBoot();
+
+// ═══════════════════════════════════════════════════════════════
+// WebSocket
+// ═══════════════════════════════════════════════════════════════
+const ws = new WebSocket(`ws://${location.host}/ws`);
+
+ws.onopen = () => { setStatus('READY'); addAct('WebSocket connected.'); };
+ws.onclose = () => {
+  setStatus('OFFLINE');
+  addAct('Connection lost. Reconnecting...');
+  setTimeout(()=>location.reload(), 3000);
+};
+ws.onerror = () => setStatus('ERROR');
+
+ws.onmessage = (e) => {
+  const m = JSON.parse(e.data);
+  if (m.type === 'response') { addMsg('j', m.text); }
+  else if (m.type === 'audio') { playAudio(m.data); }
+  else if (m.type === 'status') {
+    const map = {ready:'READY', processing:'PROCESSING', speaking:'SPEAKING', listening:'LISTENING'};
+    setStatus(map[m.state] || m.state.toUpperCase());
+    hudState = m.state === 'ready' ? 'idle' : m.state;
+  }
+  else if (m.type === 'notification') {
+    addMsg('sy', m.text);
+    addAct('NOTIFICATION: ' + m.text.slice(0,50));
+    ws.send(JSON.stringify({type:'speak', text: m.text}));
+  }
+};
+
+function sendMsg(text) {
+  if (!text.trim() || ws.readyState !== WebSocket.OPEN) return;
+  addMsg('u', text);
+  ws.send(JSON.stringify({type:'message', text}));
+  hudState = 'processing';
+  setStatus('PROCESSING');
+  addAct('Input: "' + text.slice(0,45) + (text.length>45?'...':"") + '"');
+}
+
+function sendText() {
+  const el = document.getElementById('txtin');
+  sendMsg(el.value);
+  el.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Voice recognition
+// ═══════════════════════════════════════════════════════════════
+function initSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    addAct('⚠ Web Speech API unavailable. Use Chrome/Edge.');
+    document.getElementById('spkbtn').disabled = true;
+    document.getElementById('spkbtn').textContent = '✕ NO VOICE API';
+    return;
+  }
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (e) => {
+    const results = Array.from(e.results);
+    const interim = results.filter(r=>!r.isFinal).map(r=>r[0].transcript).join('');
+    const final   = results.filter(r=>r.isFinal).map(r=>r[0].transcript).join('');
+    document.getElementById('interim').textContent = interim ? '▶ ' + interim : '';
+    if (final) {
+      document.getElementById('interim').textContent = '';
+      sendMsg(final);
+      stopListening();
+    }
+  };
+  recognition.onerror = (e) => { addAct('Voice error: ' + e.error); stopListening(); };
+  recognition.onend   = () => { if (!isListening) setListenUI(false); };
+}
+
+async function startListening() {
+  if (!recognition) return;
+  // Set up mic analyser for waveform
+  try {
+    if (!micAnalyser) {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true, video:false});
+      const ac = new (window.AudioContext||window.webkitAudioContext)();
+      micAnalyser = ac.createAnalyser();
+      micAnalyser.fftSize = 128;
+      micData = new Uint8Array(micAnalyser.frequencyBinCount);
+      ac.createMediaStreamSource(stream).connect(micAnalyser); // no destination = no echo
+    }
+    document.getElementById('micdot').className = 'sdot2 on';
+    document.getElementById('micstat').textContent = 'MICROPHONE ACTIVE';
+  } catch(err) {
+    addAct('Mic access denied: ' + err.message);
+  }
+  isListening = true;
+  recognition.start();
+  setListenUI(true);
+  hudState = 'listening';
+  setStatus('LISTENING');
+}
+
+function stopListening() {
+  isListening = false;
+  if (recognition) recognition.stop();
+  setListenUI(false);
+  hudState = 'idle';
+  document.getElementById('micdot').className = 'sdot2 off';
+  document.getElementById('micstat').textContent = 'MICROPHONE STANDBY';
+  document.getElementById('interim').textContent = '';
+}
+
+function setListenUI(on) {
+  const btn = document.getElementById('spkbtn');
+  btn.classList.toggle('listening', on);
+  btn.textContent = on ? '■ STOP' : '◉ SPEAK';
+}
+
+function toggleSpeech() {
+  if (isListening) stopListening(); else startListening();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Audio playback
+// ═══════════════════════════════════════════════════════════════
+async function playAudio(b64) {
+  try {
+    if (!playbackCtx) playbackCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if (playbackCtx.state === 'suspended') await playbackCtx.resume();
+
+    const bytes = Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+    const buffer = await playbackCtx.decodeAudioData(bytes.buffer.slice(0));
+
+    const analyser = playbackCtx.createAnalyser();
+    analyser.fftSize = 128;
+    wvAnalyser = analyser;
+    wvData = new Uint8Array(analyser.frequencyBinCount);
+
+    const src = playbackCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(analyser);
+    analyser.connect(playbackCtx.destination);
+    src.start();
+    hudState = 'speaking';
+
+    src.onended = () => {
+      hudState = 'idle';
+      wvAnalyser = null;
+      setStatus('READY');
+    };
+  } catch(err) {
+    addAct('Audio error: ' + err.message);
+    hudState = 'idle';
+    setStatus('READY');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI helpers
+// ═══════════════════════════════════════════════════════════════
+function addMsg(role, text) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + role;
+  const labels = {j:'◈ JARVIS', u:'▶ YOU', sy:'⚠ ALERT'};
+  const now = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+  el.innerHTML = `<div class="mlabel">${labels[role]||role} · ${now}</div><div class="mtext">${esc(text)}</div>`;
+  const log = document.getElementById('log');
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+function addAct(line) {
+  const el = document.getElementById('actlog');
+  const now = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const d = document.createElement('div');
+  d.textContent = '[' + now + '] ' + line;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStatus(s) {
+  document.getElementById('stxt').textContent = s;
+  const dot = document.getElementById('sdot');
+  const colors = {READY:'#00d4ff', LISTENING:'#00ff88', PROCESSING:'#ffaa00', SPEAKING:'#bb99ff', ERROR:'#ff4444', OFFLINE:'#ff4444'};
+  const c = colors[s] || '#00d4ff';
+  dot.style.background = c;
+  dot.style.boxShadow = `0 0 9px ${c}`;
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HUD Canvas — main circle animation
+// ═══════════════════════════════════════════════════════════════
+const hud  = document.getElementById('hud');
+const hctx = hud.getContext('2d');
+const HW = hud.width, HH = hud.height;
+const CX = HW/2, CY = HH/2;
+
+function drawHUD(ts) {
+  hctx.clearRect(0, 0, HW, HH);
+  const t = ts / 1000;
+
+  // ── tick marks (outermost) ─────────────────────────────
+  for (let i = 0; i < 72; i++) {
+    const a = (i/72)*Math.PI*2 - Math.PI/2;
+    const isMajor = i%6===0;
+    const r0 = 202, r1 = isMajor ? 192 : 197;
+    hctx.beginPath();
+    hctx.moveTo(CX+r0*Math.cos(a), CY+r0*Math.sin(a));
+    hctx.lineTo(CX+r1*Math.cos(a), CY+r1*Math.sin(a));
+    hctx.strokeStyle = isMajor ? 'rgba(0,212,255,0.65)' : 'rgba(0,212,255,0.2)';
+    hctx.lineWidth = isMajor ? 2 : 1;
+    hctx.stroke();
+  }
+
+  // ── outer rotating segmented ring ─────────────────────
+  const rotSpeed = hudState==='processing' ? 1.4 : 0.18;
+  hctx.save(); hctx.translate(CX,CY); hctx.rotate(t*rotSpeed);
+  for (let i=0; i<28; i++) {
+    const sa = (i/28)*Math.PI*2, ea = ((i+0.68)/28)*Math.PI*2;
+    hctx.beginPath(); hctx.arc(0,0,182,sa,ea);
+    const bright = i%4===0 ? 0.9 : i%2===0 ? 0.5 : 0.25;
+    hctx.strokeStyle = `rgba(0,212,255,${bright})`;
+    hctx.lineWidth = i%4===0 ? 2.5 : 1.5;
+    hctx.stroke();
+  }
+  hctx.restore();
+
+  // ── counter-rotating inner ring (dashed) ──────────────
+  hctx.save(); hctx.translate(CX,CY); hctx.rotate(-t*0.35);
+  hctx.setLineDash([8,20]);
+  hctx.beginPath(); hctx.arc(0,0,122,0,Math.PI*2);
+  hctx.strokeStyle = 'rgba(0,100,210,0.55)'; hctx.lineWidth=1.5; hctx.stroke();
+  hctx.setLineDash([]); hctx.restore();
+
+  // ── 8 orbit nodes ─────────────────────────────────────
+  for (let i=0;i<8;i++){
+    const a = (i/8)*Math.PI*2 + t*0.15;
+    const pulse = 0.4 + 0.6*Math.sin(t*2.5 + i*0.8);
+    hctx.beginPath();
+    hctx.arc(CX+182*Math.cos(a), CY+182*Math.sin(a), 4, 0, Math.PI*2);
+    hctx.fillStyle = `rgba(0,212,255,${pulse})`; hctx.fill();
+  }
+
+  // ── radar sweep (processing only) ─────────────────────
+  if (hudState==='processing') {
+    const sw = (t*1.6 % 1)*Math.PI*2 - Math.PI/2;
+    hctx.save(); hctx.translate(CX,CY);
+    for (let i=45; i>=0; i--) {
+      const a0 = sw - i*0.038, a1 = a0+0.04;
+      hctx.beginPath(); hctx.moveTo(0,0); hctx.arc(0,0,170,a0,a1); hctx.closePath();
+      hctx.fillStyle = `rgba(0,212,255,${((45-i)/45)*0.28})`; hctx.fill();
+    }
+    hctx.beginPath(); hctx.moveTo(0,0);
+    hctx.lineTo(170*Math.cos(sw), 170*Math.sin(sw));
+    hctx.strokeStyle='rgba(0,212,255,0.85)'; hctx.lineWidth=2; hctx.stroke();
+    hctx.restore();
+  }
+
+  // ── pulsing glow ring ──────────────────────────────────
+  const pf = hudState==='listening' ? 0.55+0.45*Math.sin(t*9)
+           : hudState==='speaking'  ? 0.5+0.5*Math.sin(t*6)
+           : 0.45+0.15*Math.sin(t*1.4);
+  const gr = 150 + pf*6;
+  const grd = hctx.createRadialGradient(CX,CY,gr-12,CX,CY,gr+22);
+  grd.addColorStop(0,`rgba(0,212,255,${pf*0.28})`); grd.addColorStop(1,'rgba(0,212,255,0)');
+  hctx.beginPath(); hctx.arc(CX,CY,gr+22,0,Math.PI*2);
+  hctx.fillStyle=grd; hctx.fill();
+
+  hctx.beginPath(); hctx.arc(CX,CY,gr,0,Math.PI*2);
+  hctx.strokeStyle=`rgba(0,212,255,${0.35+pf*0.55})`; hctx.lineWidth=1.5; hctx.stroke();
+
+  // ── waveform bars (circular) ───────────────────────────
+  const activeAn = hudState==='speaking' ? wvAnalyser : hudState==='listening' ? micAnalyser : null;
+  const activeData = hudState==='speaking' ? wvData : micData;
+  const BARS = 72;
+
+  if (activeAn && activeData) {
+    activeAn.getByteFrequencyData(activeData);
+    for (let i=0; i<BARS; i++){
+      const a = (i/BARS)*Math.PI*2 - Math.PI/2;
+      const v = (activeData[i%activeData.length]||0)/255;
+      const h = 6 + v*60;
+      hctx.beginPath();
+      hctx.moveTo(CX+100*Math.cos(a), CY+100*Math.sin(a));
+      hctx.lineTo(CX+(100+h)*Math.cos(a), CY+(100+h)*Math.sin(a));
+      const col = hudState==='listening' ? `rgba(0,255,136,${0.35+v*0.65})` : `rgba(180,140,255,${0.35+v*0.65})`;
+      hctx.strokeStyle=col; hctx.lineWidth=2; hctx.stroke();
+    }
+  } else {
+    // idle: gentle sine ripple
+    for (let i=0; i<BARS; i++){
+      const a = (i/BARS)*Math.PI*2 - Math.PI/2;
+      const v = 0.07 + 0.04*Math.sin(t*1.3 + i*0.18);
+      const h = v*32;
+      hctx.beginPath();
+      hctx.moveTo(CX+100*Math.cos(a), CY+100*Math.sin(a));
+      hctx.lineTo(CX+(100+h)*Math.cos(a), CY+(100+h)*Math.sin(a));
+      hctx.strokeStyle='rgba(0,90,180,0.38)'; hctx.lineWidth=1.5; hctx.stroke();
+    }
+  }
+
+  // ── inner filled circle ────────────────────────────────
+  hctx.beginPath(); hctx.arc(CX,CY,96,0,Math.PI*2);
+  hctx.fillStyle='rgba(2,9,18,0.93)'; hctx.fill();
+  hctx.strokeStyle='rgba(0,140,255,0.45)'; hctx.lineWidth=2; hctx.stroke();
+
+  // inner decorative sub-ring
+  hctx.beginPath(); hctx.arc(CX,CY,74,0,Math.PI*2);
+  hctx.strokeStyle='rgba(0,212,255,0.1)'; hctx.lineWidth=1; hctx.stroke();
+
+  // 4 arc brackets inside
+  for (let i=0;i<4;i++){
+    const a0 = (i/4)*Math.PI*2 + Math.PI/8;
+    hctx.beginPath(); hctx.arc(CX,CY,82,a0,a0+0.4);
+    hctx.strokeStyle='rgba(0,212,255,0.55)'; hctx.lineWidth=3; hctx.stroke();
+  }
+
+  // ── center text ────────────────────────────────────────
+  hctx.textAlign='center'; hctx.textBaseline='middle';
+
+  hctx.font='bold 17px "Courier New"'; hctx.fillStyle='#00d4ff';
+  hctx.shadowBlur=12; hctx.shadowColor='#00d4ff';
+  hctx.fillText('J.A.R.V.I.S.', CX, CY-13);
+  hctx.shadowBlur=0;
+
+  const stateColors = {idle:'rgba(0,212,255,0.65)', listening:'#00ff88', processing:'#ffaa00', speaking:'#bb99ff'};
+  const stateLabels = {idle:'READY', listening:'LISTENING', processing:'PROCESSING', speaking:'SPEAKING'};
+  hctx.font='10px "Courier New"'; hctx.fillStyle=stateColors[hudState]||'rgba(0,212,255,0.65)';
+  hctx.fillText(stateLabels[hudState]||'READY', CX, CY+6);
+
+  hctx.font='8px "Courier New"'; hctx.fillStyle='rgba(0,212,255,0.28)';
+  hctx.fillText('MARK VII · CLAUDE SONNET', CX, CY+22);
+
+  requestAnimationFrame(drawHUD);
+}
+requestAnimationFrame(drawHUD);
+
+// ═══════════════════════════════════════════════════════════════
+// Bottom waveform bar canvas
+// ═══════════════════════════════════════════════════════════════
+const wc = document.getElementById('wavecanvas');
+const wctx = wc.getContext('2d');
+function resizeWave(){ wc.width=wc.offsetWidth; wc.height=wc.offsetHeight; }
+resizeWave(); window.addEventListener('resize', resizeWave);
+
+function drawWave(ts) {
+  const W=wc.width, H=wc.height;
+  wctx.clearRect(0,0,W,H);
+  const t = ts/1000;
+  const BARS=80, bw=W/BARS;
+  const an = hudState==='speaking' ? wvAnalyser : hudState==='listening' ? micAnalyser : null;
+  const dt = hudState==='speaking' ? wvData : micData;
+
+  for (let i=0;i<BARS;i++){
+    let v;
+    if (an && dt){ an.getByteFrequencyData(dt); v=(dt[Math.floor(i*dt.length/BARS)]||0)/255; }
+    else { v=0.025+0.015*Math.sin(t*1.8+i*0.22); }
+    const bh = Math.max(2, v*H*0.82);
+    const x = i*bw + bw*0.12;
+    const y = (H-bh)/2;
+    const col = hudState==='listening' ? `rgba(0,255,136,${0.3+v*0.7})`
+              : hudState==='speaking'  ? `rgba(180,140,255,${0.3+v*0.7})`
+              : `rgba(0,212,255,${0.12+v*0.4})`;
+    wctx.fillStyle=col;
+    wctx.fillRect(x, y, bw*0.76, bh);
+  }
+  requestAnimationFrame(drawWave);
+}
+requestAnimationFrame(drawWave);
+</script>
+</body>
+</html>

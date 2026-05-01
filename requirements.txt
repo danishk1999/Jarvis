@@ -1,4 +1,11 @@
 anthropic>=0.25.0
 chromadb>=0.5.0
-python-telegram-bot>=20.7
 python-dotenv>=1.0.0
+requests>=2.31.0
+schedule>=1.2.0
+duckduckgo-search>=6.0.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.18.3
+edge-tts>=7.0.0
+# Optional: keep for Telegram fallback
+python-telegram-bot>=20.7
